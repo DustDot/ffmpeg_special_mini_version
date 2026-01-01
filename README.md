@@ -1,0 +1,2 @@
+# ffmpeg_special_mini_version
+一个特殊版本的ffmpeg
