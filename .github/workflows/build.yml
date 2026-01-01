@@ -1,0 +1,69 @@
+name: Build Mini FFmpeg for Windows
+
+on:
+  workflow_dispatch: # 手动触发编译
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 yasm nasm build-essential pkg-config git
+
+      - name: Download LAME (MP3 Encoder)
+        run: |
+          wget https://downloads.sourceforge.net/lame/lame-3.100.tar.gz
+          tar -xzf lame-3.100.tar.gz
+
+      - name: Build LAME
+        run: |
+          cd lame-3.100
+          ./configure \
+            --host=x86_64-w64-mingw32 \
+            --prefix=/usr/local/x86_64-w64-mingw32 \
+            --disable-shared \
+            --enable-static
+          make -j$(nproc)
+          sudo make install
+
+      - name: Clone FFmpeg
+        run: git clone --depth 1 https://github.com/FFmpeg/FFmpeg.git ffmpeg
+
+      - name: Build FFmpeg
+        run: |
+          cd ffmpeg
+          ./configure \
+            --arch=x86_64 \
+            --target-os=mingw32 \
+            --cross-prefix=x86_64-w64-mingw32- \
+            --pkg-config=pkg-config \
+            --enable-gpl \
+            --enable-libmp3lame \
+            --disable-everything \
+            --enable-small \
+            --enable-decoder=aac \
+            --enable-demuxer=mov,aac,m4v \
+            --enable-encoder=libmp3lame \
+            --enable-muxer=mp3 \
+            --enable-protocol=file \
+            --enable-filter=aresample \
+            --disable-doc \
+            --disable-devices \
+            --disable-avdevice \
+            --disable-swscale \
+            --disable-postproc \
+            --disable-network \
+            --extra-cflags="-I/usr/local/x86_64-w64-mingw32/include" \
+            --extra-ldflags="-L/usr/local/x86_64-w64-mingw32/lib" \
+            --ld="x86_64-w64-mingw32-gcc"
+          make -j$(nproc)
+          # 使用 strip 进一步压缩体积
+          x86_64-w64-mingw32-strip ffmpeg.exe
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mini-ffmpeg-windows
+          path: ffmpeg/ffmpeg.exe
