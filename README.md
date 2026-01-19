@@ -1,2 +1,2 @@
-# ffmpeg_special_mini_version
-一个特殊版本的ffmpeg
+# ffmpeg_lame
+只有lame库的ffmpeg
